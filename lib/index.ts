@@ -48,7 +48,8 @@ export function expressAwsCognito(
     throw new Error('Missing/undefined issuer argument');
   }
 
-  const jwksUri = `${region}/.well-known/jwks.json`;
+  const issuer = `https://cognito-idp.${region}.amazonaws.com/${userPoolId}`;
+  const jwksUri = `${issuer}/.well-known/jwks.json`;
 
   const jwtCheck: expressJwt.RequestHandler = expressJwt({
     resultProperty: 'locals.auth',
@@ -64,7 +65,7 @@ export function expressAwsCognito(
         ));
       },
     }),
-    issuer: `https://cognito-idp.${region}.amazonaws.com/${userPoolId}`,
+    issuer,
     algorithms: ['RS256'],
   });
 
