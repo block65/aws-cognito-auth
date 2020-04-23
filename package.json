@@ -1,6 +1,6 @@
 {
   "name": "@colacube/express-aws-cognito",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "license": "UNLICENSED",
   "main": "dist/index.js",
   "scripts": {
