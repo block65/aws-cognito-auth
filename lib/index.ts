@@ -70,7 +70,7 @@ export function expressAwsCognito(
   });
 
   return [
-    (req: Request, res: Response, next: NextFunction): void => {  debugger;
+    (req: Request, res: Response, next: NextFunction): void => {
       if (req.headers.authorization) {
         jwtCheck(req, res, next);
       } else {
