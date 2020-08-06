@@ -1,5 +1,5 @@
 import * as jwks from 'jwks-rsa';
-import { createAuthToken, CognitoAccessTokenClaims } from '@block65/auth-token';
+import { createAuthToken } from '@block65/auth-token';
 import * as bs58 from 'bs58';
 import type {
   ErrorRequestHandler,
@@ -145,7 +145,9 @@ export function expressAwsCognito(
           const claims: Record<string, unknown> = res.locals.auth;
 
           const userId =
-            typeof claims.sub === 'string' ? await uuidToUserId(claims.sub) : '';
+            typeof claims.sub === 'string'
+              ? await uuidToUserId(claims.sub)
+              : '';
 
           if (claims.token_use !== 'access') {
             throw new TokenUnsuitableError(`Unsuitable Token Use`).debug({

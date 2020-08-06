@@ -263,10 +263,10 @@
   resolved "https://registry.yarnpkg.com/@bcoe/v8-coverage/-/v8-coverage-0.2.3.tgz#75a2e8b51cb758a7553d6804a5932d7aace75c39"
   integrity sha512-0hYQ8SB4Db5zvZB4axdMHGwEaQjkZzFjQiN9LVYvIFB2nSUHW9tYpxWriPrWDASIxiaXax83REcLxuSdnGPZtw==
 
-"@block65/auth-token@^2.0.1":
-  version "2.0.1"
-  resolved "https://registry.yarnpkg.com/@block65/auth-token/-/auth-token-2.0.1.tgz#abc1ae1a96af7749a3a1131377f2220b46c7b4d9"
-  integrity sha512-he4Z+d2vxJNTNaClx5B4O3V9NdfF5w1DeyBSVAWZE5Bzd4Xxaub7bes3uUPPPKj/oiocQeQ4ImGdcinkakLvFw==
+"@block65/auth-token@^2.1.3":
+  version "2.1.3"
+  resolved "https://registry.yarnpkg.com/@block65/auth-token/-/auth-token-2.1.3.tgz#530a84e3a55a52b0dd9d8ca47ab76aec7f68c7e9"
+  integrity sha512-oYJ1GyXJoQBQsDqymNMQ3AbuW+5nfGTtkkOF0k7GzM0Zna8f7HrnZUouOnfF8+E23b46G0j710bt+k3rnBmaYQ==
 
 "@block65/custom-error@^1.1.2":
   version "1.1.2"
