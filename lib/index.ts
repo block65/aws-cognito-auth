@@ -1,4 +1,6 @@
-import jwks from 'jwks-rsa';
+import * as jwks from 'jwks-rsa';
+import { createAuthToken, CognitoAccessTokenClaims } from '@block65/auth-token';
+import * as bs58 from 'bs58';
 import type {
   ErrorRequestHandler,
   NextFunction,
@@ -6,16 +8,13 @@ import type {
   RequestHandler,
   Response,
 } from 'express';
-import { createToken, StandardClaims, UserClaims } from '@colacube/auth-token';
-import bs58 from 'bs58';
-import { expressAsyncWrap } from '@colacube/express-async-wrapper';
-import expressJwt, { UnauthorizedError } from 'express-jwt';
-import { NotAuthorizedError } from './not-authorized-error';
-import { AuthProviderError } from './auth-provider-error';
-import { TokenUnsuitableError } from './token-unsuitable-error';
-import { MissingAuthorizationError } from './missing-authorization-error';
-import { TokenExpiredError } from './token-expired-error';
-import { TokenError } from './token-error';
+import { expressAsyncWrap } from '@block65/express-async-wrapper';
+import * as expressJwt from 'express-jwt';
+import { AuthProviderError } from './errors/auth-provider-error';
+import { TokenUnsuitableError } from './errors/token-unsuitable-error';
+import { MissingAuthorizationError } from './errors/missing-authorization-error';
+import { TokenExpiredError } from './errors/token-expired-error';
+import { TokenInvalidError } from './errors/token-invalid-error';
 
 export function uuidToUserId(uuid: string): string {
   if (uuid.length !== 36) {
@@ -43,7 +42,6 @@ export function expressAwsCognito(
   region: string,
   userPoolId: string,
 ): (RequestHandler | ErrorRequestHandler)[] {
-
   if (!region) {
     throw new Error('Missing/undefined issuer argument');
   }
@@ -51,7 +49,7 @@ export function expressAwsCognito(
   const issuer = `https://cognito-idp.${region}.amazonaws.com/${userPoolId}`;
   const jwksUri = `${issuer}/.well-known/jwks.json`;
 
-  const jwtCheck: expressJwt.RequestHandler = expressJwt({
+  const jwtCheck = expressJwt({
     resultProperty: 'locals.auth',
     credentialsRequired: true,
     secret: jwks.expressJwtSecret({
@@ -60,9 +58,13 @@ export function expressAwsCognito(
       jwksRequestsPerMinute: 5,
       jwksUri,
       handleSigningKeyError: (err, cb): void => {
-        cb(err && new AuthProviderError('Error handling JWT signing key', err).debug(
-          {region, userPoolId}
-        ));
+        cb(
+          err &&
+            new AuthProviderError('Error handling JWT signing key', err).debug({
+              region,
+              userPoolId,
+            }),
+        );
       },
     }),
     issuer,
@@ -78,12 +80,12 @@ export function expressAwsCognito(
       }
     },
     (
-      err: UnauthorizedError | Error,
+      err: expressJwt.UnauthorizedError | Error,
       req: Request,
       res: Response,
       next: NextFunction,
     ): void => {
-      if (err instanceof UnauthorizedError) {
+      if (err instanceof expressJwt.UnauthorizedError) {
         switch (err.code) {
           case 'credentials_bad_scheme':
           case 'credentials_bad_format': {
@@ -96,24 +98,35 @@ export function expressAwsCognito(
             break;
           }
           case 'invalid_token': {
-            next(new TokenError(`Invalid token`, err).debug(err));
+            next(
+              new TokenInvalidError(`Invalid token`, err).debug({
+                code: err.code,
+                inner: err.inner,
+              }),
+            );
             break;
           }
           default: {
             if ('inner' in err) {
-              // @ts-ignore
-              switch (err.inner.name) {
+              switch ((err.inner as Error).name) {
                 case 'TokenExpiredError': {
-                  next(new TokenExpiredError(`Token Expired: ${err.code}`, err));
+                  next(
+                    new TokenExpiredError(`Token Expired: ${err.code}`, err),
+                  );
                   break;
                 }
                 default: {
-                  next(new NotAuthorizedError(`Token Error: ${err.code}`, err));
+                  next(new TokenInvalidError(`Token Error: ${err.code}`, err));
                   break;
                 }
               }
             } else {
-              next(new TokenError('Not Authorized due to unknown error', err));
+              next(
+                new TokenInvalidError(
+                  'Not Authorized due to unknown error',
+                  err,
+                ),
+              );
             }
           }
         }
@@ -125,16 +138,14 @@ export function expressAwsCognito(
       async (req, res, next): Promise<void> => {
         const [scheme, jwt] = (req.header('authorization') || '').split(' ');
         if (scheme.toLowerCase() !== 'bearer' || !jwt) {
-          next(
-            new MissingAuthorizationError(
-              'Missing or Invalid Authorization Header',
-            ),
+          throw new MissingAuthorizationError(
+            'Missing or Invalid Authorization Header',
           );
         } else {
-          const claims: StandardClaims & UserClaims = res.locals.auth;
+          const claims: Record<string, unknown> = res.locals.auth;
 
           const userId =
-            claims.sub && claims.username ? await uuidToUserId(claims.sub) : '';
+            typeof claims.sub === 'string' ? await uuidToUserId(claims.sub) : '';
 
           if (claims.token_use !== 'access') {
             throw new TokenUnsuitableError(`Unsuitable Token Use`).debug({
@@ -143,11 +154,11 @@ export function expressAwsCognito(
             });
           }
 
-          res.locals.token = createToken({
+          res.locals.token = createAuthToken({
             jwt,
             ips: Array.from(new Set([req.ip, ...req.ips])),
-            userId,
             claims,
+            userId,
           });
           next();
         }

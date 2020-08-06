@@ -1,13 +1,8 @@
-import express, { NextFunction, Request, Response } from 'express';
+import * as express from 'express';
+import type { NextFunction, Request, Response } from 'express';
 import { expressAwsCognito } from '../lib';
-import { MissingAuthorizationError } from '../lib/missing-authorization-error';
-import { TokenError } from '../lib/token-error';
-import { CustomError } from '@colacube/custom-error';
-
-// test('basic', () => {
-//   // const mw = expressAwsCognito('issuer');
-//   expect(express).toBe('lol');
-// });
+import { MissingAuthorizationError } from '../lib/errors/missing-authorization-error';
+import { TokenInvalidError } from '../lib/errors/token-invalid-error';
 
 const makeMockRequest = (
   options: { headers?: Record<string, string> } = {},
@@ -26,7 +21,7 @@ const makeMockRequest = (
     ...options,
   } as unknown) as Request);
 
-const makeMockResponse = (options: {} = {}): Response =>
+const makeMockResponse = (): Response =>
   (({
     setHeader: jest.fn().mockReturnThis(),
     status: jest.fn().mockReturnThis(),
@@ -43,7 +38,7 @@ function testApp(
   app.use(expressAwsCognito('local', 'issuer'));
 
   return new Promise((resolve) => {
-    app(req, res, (err) => {
+    app(req, res, (err: any) => {
       next(err);
       resolve();
     });
@@ -52,7 +47,7 @@ function testApp(
 
 test('should throw MissingAuthorizationError with invalid headers ', async () => {
   expect.assertions(1);
-  await testApp(makeMockRequest(), makeMockResponse(), (err) => {
+  await testApp(makeMockRequest(), makeMockResponse(), (err: any) => {
     expect(err).toBeInstanceOf(MissingAuthorizationError);
   });
 });
@@ -66,13 +61,12 @@ test('should throw MissingAuthorizationError with no headers ', async () => {
       },
     }),
     makeMockResponse(),
-    (err) => {
+    (err: any) => {
       expect(err).toBeInstanceOf(MissingAuthorizationError);
       expect(err.message).toContain('Invalid');
     },
   );
 });
-
 
 test('should throw MissingAuthorizationError with missing JWT ', async () => {
   expect.assertions(2);
@@ -83,13 +77,12 @@ test('should throw MissingAuthorizationError with missing JWT ', async () => {
       },
     }),
     makeMockResponse(),
-    (err) => {
+    (err: any) => {
       expect(err).toBeInstanceOf(MissingAuthorizationError);
       expect(err.message).toContain('Invalid');
     },
   );
 });
-
 
 test('should throw TokenError with bad JWT ', async () => {
   expect.assertions(2);
@@ -100,26 +93,29 @@ test('should throw TokenError with bad JWT ', async () => {
       },
     }),
     makeMockResponse(),
-    (err) => {
-      expect(err).toBeInstanceOf(TokenError);
+    (err: any) => {
+      expect(err).toBeInstanceOf(TokenInvalidError);
       expect(err.message).toContain('Invalid');
     },
   );
 });
 
-
 test('should throw TokenError with fake JWT ', async () => {
-  expect.assertions(1);
+  expect.assertions(2);
   await testApp(
     makeMockRequest({
       headers: {
-        authorization: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c',
+        authorization:
+          'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c',
       },
     }),
     makeMockResponse(),
-    (err: CustomError) => {
-      expect(err.debug()).toBe({ });
-      // expect(err).toBeInstanceOf(TokenError);
+    (err: any) => {
+      expect(err).toBeInstanceOf(TokenInvalidError);
+      expect(err.debug()).toMatchObject({
+        code: 'invalid_token',
+        inner: expect.any(Error),
+      });
       // expect(err.message).toContain('Invalid');
     },
   );

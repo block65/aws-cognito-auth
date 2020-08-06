@@ -1,4 +1,4 @@
-import { CustomError } from '@colacube/custom-error';
+import { CustomError } from '@block65/custom-error';
 
 export class AuthProviderError extends CustomError {
   public constructor(message: string, err?: Error) {

@@ -6,9 +6,8 @@
     "module": "commonjs",
     "moduleResolution": "node",
     "outDir": "dist",
-    "esModuleInterop": true,
     "lib": [
-      "esnext"
+      "es2019"
     ]
   },
   "include": [
