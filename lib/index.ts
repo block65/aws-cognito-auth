@@ -1,6 +1,6 @@
-import * as jwks from 'jwks-rsa';
+import jwks from 'jwks-rsa';
 import { createAuthToken } from '@block65/auth-token';
-import * as bs58 from 'bs58';
+import bs58 from 'bs58';
 import type {
   ErrorRequestHandler,
   NextFunction,
@@ -9,7 +9,7 @@ import type {
   Response,
 } from 'express';
 import { expressAsyncWrap } from '@block65/express-async-wrapper';
-import * as expressJwt from 'express-jwt';
+import expressJwt from 'express-jwt';
 import { AuthProviderError } from './errors/auth-provider-error';
 import { TokenUnsuitableError } from './errors/token-unsuitable-error';
 import { MissingAuthorizationError } from './errors/missing-authorization-error';

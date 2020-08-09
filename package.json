@@ -6,8 +6,9 @@
   "scripts": {
     "build": "tsc",
     "build:clean": "rimraf dist/*",
-    "build:watch": "tsc -w",
-    "prepare": "yarn build:clean && yarn build",
+    "bundle": "rollup -c rollup.config.js",
+    "bundle:watch": "yarn bundle -w",
+    "prepare": "yarn build:clean && yarn bundle",
     "test": "jest"
   },
   "dependencies": {
@@ -19,7 +20,16 @@
     "jwks-rsa": "^1.8.1"
   },
   "devDependencies": {
+    "@babel/cli": "^7.10.5",
+    "@babel/core": "^7.11.1",
+    "@babel/plugin-transform-runtime": "^7.11.0",
+    "@babel/preset-env": "^7.11.0",
+    "@babel/preset-typescript": "^7.10.4",
+    "@babel/runtime": "^7.11.2",
     "@block65/eslint-config": "^1.1.4",
+    "@rollup/plugin-babel": "^5.1.0",
+    "@rollup/plugin-commonjs": "^14.0.0",
+    "@rollup/plugin-node-resolve": "^8.4.0",
     "@types/bs58": "^4.0.1",
     "@types/jest": "^26.0.9",
     "@types/node": "^14.0.27",
@@ -32,6 +42,8 @@
     "jest": "^26.2.2",
     "prettier": "^2.0.5",
     "rimraf": "^3.0.2",
+    "rollup": "^2.23.0",
+    "rollup-plugin-terser": "^6.1.0",
     "ts-jest": "^26.1.4",
     "typescript": "^3.9.7"
   },
