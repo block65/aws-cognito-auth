@@ -8,6 +8,7 @@
     "outDir": "dist",
     "removeComments": true,
     "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
     "lib": [
       "es2019"
     ]

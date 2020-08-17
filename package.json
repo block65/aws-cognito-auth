@@ -8,11 +8,11 @@
     "build:clean": "rimraf dist/*",
     "bundle": "rollup -c rollup.config.js",
     "bundle:watch": "yarn bundle -w",
-    "prepare": "yarn build:clean && yarn build  --emitDeclarationOnly && yarn bundle",
+    "prepare": "yarn test && yarn build:clean && yarn build  --emitDeclarationOnly && yarn bundle",
     "test": "jest"
   },
   "dependencies": {
-    "@block65/auth-token": "^2.1.5",
+    "@block65/auth-token": "^3.0.0",
     "@block65/custom-error": "^1.1.2",
     "@block65/express-async-wrapper": "^2.0.0",
     "bs58": "^4.0.1",

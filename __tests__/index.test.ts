@@ -1,4 +1,4 @@
-import * as express from 'express';
+import express from 'express';
 import type { NextFunction, Request, Response } from 'express';
 import { expressAwsCognito } from '../lib';
 import { MissingAuthorizationError } from '../lib/errors/missing-authorization-error';
@@ -46,14 +46,13 @@ function testApp(
 }
 
 test('should throw MissingAuthorizationError with invalid headers ', async () => {
-  expect.assertions(1);
   await testApp(makeMockRequest(), makeMockResponse(), (err: any) => {
     expect(err).toBeInstanceOf(MissingAuthorizationError);
   });
+  expect.assertions(1);
 });
 
 test('should throw MissingAuthorizationError with no headers ', async () => {
-  expect.assertions(2);
   await testApp(
     makeMockRequest({
       headers: {
@@ -66,10 +65,10 @@ test('should throw MissingAuthorizationError with no headers ', async () => {
       expect(err.message).toContain('Invalid');
     },
   );
+  expect.assertions(2);
 });
 
 test('should throw MissingAuthorizationError with missing JWT ', async () => {
-  expect.assertions(2);
   await testApp(
     makeMockRequest({
       headers: {
@@ -78,14 +77,15 @@ test('should throw MissingAuthorizationError with missing JWT ', async () => {
     }),
     makeMockResponse(),
     (err: any) => {
+      debugger;
       expect(err).toBeInstanceOf(MissingAuthorizationError);
       expect(err.message).toContain('Invalid');
     },
   );
+  expect.assertions(2);
 });
 
 test('should throw TokenError with bad JWT ', async () => {
-  expect.assertions(2);
   await testApp(
     makeMockRequest({
       headers: {
@@ -98,10 +98,10 @@ test('should throw TokenError with bad JWT ', async () => {
       expect(err.message).toContain('Invalid');
     },
   );
+  expect.assertions(2);
 });
 
 test('should throw TokenError with fake JWT ', async () => {
-  expect.assertions(2);
   await testApp(
     makeMockRequest({
       headers: {
@@ -119,4 +119,5 @@ test('should throw TokenError with fake JWT ', async () => {
       // expect(err.message).toContain('Invalid');
     },
   );
+  expect.assertions(2);
 });
