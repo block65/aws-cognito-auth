@@ -50,13 +50,15 @@ export function expressAwsCognito(
   const jwksUri = `${issuer}/.well-known/jwks.json`;
 
   const jwtCheck = expressJwt({
-    resultProperty: 'locals.auth',
+    algorithms: ['RS256'],
+    issuer,
     credentialsRequired: true,
+    resultProperty: 'locals.auth',
     secret: jwks.expressJwtSecret({
+      jwksUri,
       cache: true,
       rateLimit: true,
       jwksRequestsPerMinute: 5,
-      jwksUri,
       handleSigningKeyError: (err, cb): void => {
         cb(
           err &&
@@ -67,13 +69,11 @@ export function expressAwsCognito(
         );
       },
     }),
-    issuer,
-    algorithms: ['RS256'],
   });
 
   return [
     (req: Request, res: Response, next: NextFunction): void => {
-      if (req.headers.authorization) {
+      if (req.header('authorization')) {
         jwtCheck(req, res, next);
       } else {
         next();
@@ -136,34 +136,42 @@ export function expressAwsCognito(
     },
     expressAsyncWrap(
       async (req, res, next): Promise<void> => {
-        const [scheme, jwt] = (req.header('authorization') || '').split(' ');
-        if (scheme.toLowerCase() !== 'bearer' || !jwt) {
+        const [scheme = '', jwt = ''] =
+          req.header('authorization')?.split(' ') || [];
+
+        if (scheme.toLowerCase() !== 'bearer') {
           throw new MissingAuthorizationError(
-            'Missing or Invalid Authorization Header',
+            'Expected Authorization method: Bearer',
           );
-        } else {
-          const claims: Record<string, unknown> = res.locals.auth;
-
-          const userId =
-            typeof claims.sub === 'string'
-              ? await uuidToUserId(claims.sub)
-              : '';
-
-          if (claims.token_use !== 'access') {
-            throw new TokenUnsuitableError(`Unsuitable Token Use`).debug({
-              auth: res.locals.auth,
-              claims,
-            });
-          }
-
-          res.locals.token = createAuthToken({
-            jwt,
-            ips: Array.from(new Set([req.ip, ...req.ips])),
-            claims,
-            userId,
-          });
-          next();
         }
+
+        if (!jwt) {
+          throw new MissingAuthorizationError(
+            'Invalid or Missing Bearer token',
+          );
+        }
+
+        const claims: Record<string, unknown> = res.locals.auth;
+
+        const userId =
+          typeof claims.sub === 'string'
+            ? await uuidToUserId(claims.sub)
+            : undefined;
+
+        if (claims.token_use !== 'access') {
+          throw new TokenUnsuitableError(`Unsuitable Token Use`).debug({
+            auth: res.locals.auth,
+            claims,
+          });
+        }
+
+        res.locals.token = createAuthToken({
+          jwt,
+          ips: Array.from(new Set([req.ip, ...req.ips])),
+          claims,
+          userId,
+        });
+        next();
       },
     ),
   ];

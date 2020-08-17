@@ -1,7 +1,6 @@
 import resolve from '@rollup/plugin-node-resolve';
 import commonjs from '@rollup/plugin-commonjs';
 import babel from '@rollup/plugin-babel';
-import { terser } from 'rollup-plugin-terser';
 import manifest from './package.json';
 
 const extensions = ['.ts'];
@@ -25,7 +24,6 @@ export default [
         babelHelpers: 'runtime',
         exclude: ['node_modules/**'],
       }),
-      terser(),
     ],
     output: {
       file: manifest.main,

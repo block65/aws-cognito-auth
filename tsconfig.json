@@ -6,6 +6,7 @@
     "module": "commonjs",
     "moduleResolution": "node",
     "outDir": "dist",
+    "removeComments": true,
     "allowSyntheticDefaultImports": true,
     "lib": [
       "es2019"
