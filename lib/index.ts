@@ -8,8 +8,8 @@ import type {
   RequestHandler,
   Response,
 } from 'express';
-import { expressAsyncWrap } from '@block65/express-async-wrapper';
 import expressJwt from 'express-jwt';
+import { expressAsyncWrap } from '@block65/express-async-wrapper';
 import { AuthProviderError } from './errors/auth-provider-error';
 import { TokenUnsuitableError } from './errors/token-unsuitable-error';
 import { MissingAuthorizationError } from './errors/missing-authorization-error';
