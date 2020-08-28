@@ -1,13 +1,13 @@
-import express from 'express';
 import type { NextFunction, Request, Response } from 'express';
+import express from 'express';
 import { expressAwsCognito } from '../lib';
 import { MissingAuthorizationError } from '../lib/errors/missing-authorization-error';
 import { TokenInvalidError } from '../lib/errors/token-invalid-error';
 
-const makeMockRequest = (
+function makeMockRequest(
   options: { headers?: Record<string, string> } = {},
-): Request =>
-  (({
+): Request {
+  return ({
     body: {},
     cookies: {},
     query: {},
@@ -19,26 +19,28 @@ const makeMockRequest = (
     get: jest.fn(),
     resume: jest.fn().mockReturnThis(),
     ...options,
-  } as unknown) as Request);
+  } as unknown) as Request;
+}
 
-const makeMockResponse = (): Response =>
-  (({
+function makeMockResponse(): Response {
+  return ({
     setHeader: jest.fn().mockReturnThis(),
     status: jest.fn().mockReturnThis(),
     send: jest.fn().mockReturnThis(),
     end: jest.fn().mockReturnThis(),
-  } as unknown) as Response);
+  } as unknown) as Response;
+}
 
 function testApp(
   req: Request,
   res: Response,
   next: NextFunction,
-): Promise<any> {
+): Promise<unknown> {
   const app = express();
-  app.use(expressAwsCognito('local', 'issuer'));
+  app.use(expressAwsCognito({ region: 'local', userPoolId: 'issuer' }));
 
   return new Promise((resolve) => {
-    app(req, res, (err: any) => {
+    app(req, res, (err: unknown) => {
       next(err);
       resolve();
     });
@@ -77,7 +79,6 @@ test('should throw MissingAuthorizationError with missing JWT ', async () => {
     }),
     makeMockResponse(),
     (err: any) => {
-      debugger;
       expect(err).toBeInstanceOf(MissingAuthorizationError);
       expect(err.message).toContain('Invalid');
     },

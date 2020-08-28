@@ -1,6 +1,5 @@
 import jwks from 'jwks-rsa';
 import { createAuthToken } from '@block65/auth-token';
-import bs58 from 'bs58';
 import type {
   ErrorRequestHandler,
   NextFunction,
@@ -16,32 +15,17 @@ import { MissingAuthorizationError } from './errors/missing-authorization-error'
 import { TokenExpiredError } from './errors/token-expired-error';
 import { TokenInvalidError } from './errors/token-invalid-error';
 
-export function uuidToUserId(uuid: string): string {
-  if (uuid.length !== 36) {
-    throw new Error('Invalid UUID string');
-  }
-  const buff = Buffer.from(uuid.replace(/-/g, ''), 'hex');
-  if (buff.length !== 16) {
-    throw new Error('Invalid UUID buffer');
-  }
-  return bs58.encode(buff);
+interface ExpressAwsCognitoOptions {
+  region: string;
+  userPoolId: string;
+  convertUserId?: (userId: unknown) => Promise<string>;
 }
 
-export function userIdToUuid(userId: string): string {
-  const str = bs58.decode(userId).toString('hex');
-  return [
-    str.slice(0, 8),
-    str.slice(8, 12),
-    str.slice(12, 16),
-    str.slice(16, 20),
-    str.slice(20),
-  ].join('-');
-}
-
-export function expressAwsCognito(
-  region: string,
-  userPoolId: string,
-): (RequestHandler | ErrorRequestHandler)[] {
+export function expressAwsCognito({
+  region,
+  userPoolId,
+  convertUserId,
+}: ExpressAwsCognitoOptions): (RequestHandler | ErrorRequestHandler)[] {
   if (!region) {
     throw new Error('Missing/undefined issuer argument');
   }
@@ -153,10 +137,9 @@ export function expressAwsCognito(
 
         const claims: Record<string, unknown> = res.locals.auth;
 
-        const userId =
-          typeof claims.sub === 'string'
-            ? await uuidToUserId(claims.sub)
-            : undefined;
+        const userId = convertUserId
+          ? await convertUserId(claims.sub)
+          : undefined;
 
         if (claims.token_use !== 'access') {
           throw new TokenUnsuitableError(`Unsuitable Token Use`).debug({
