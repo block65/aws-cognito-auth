@@ -1,6 +1,6 @@
 {
   "name": "@block65/express-aws-cognito",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "license": "UNLICENSED",
   "main": "dist/index.js",
   "scripts": {
