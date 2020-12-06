@@ -6,6 +6,8 @@ import { TokenUnsuitableError } from './errors/token-unsuitable-error';
 import { TokenExpiredError } from './errors/token-expired-error';
 import { TokenInvalidError } from './errors/token-invalid-error';
 
+export { TokenInvalidError, TokenUnsuitableError, TokenExpiredError };
+
 export interface AwsCognitoAuthOptions {
   region: string;
   userPoolId: string;
