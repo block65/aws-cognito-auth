@@ -2,19 +2,17 @@ import type { JsonObject } from 'type-fest';
 import jwks from 'jwks-rsa';
 import { AuthToken, createAuthToken } from '@block65/auth-token';
 import * as jsonwebtoken from 'jsonwebtoken';
-import { JsonWebTokenError } from 'jsonwebtoken';
 import { TokenUnsuitableError } from './errors/token-unsuitable-error';
-import { MissingAuthorizationError } from './errors/missing-authorization-error';
 import { TokenExpiredError } from './errors/token-expired-error';
 import { TokenInvalidError } from './errors/token-invalid-error';
 
-export interface CognitoOptions {
+export interface AwsCognitoAuthOptions {
   region: string;
   userPoolId: string;
   userIdGenerator?: (claims: JsonObject) => Promise<string | void>;
 }
 
-export interface Options {
+interface TokenVerifierOptions {
   jwksUri: string;
   userIdGenerator?: (claims: JsonObject) => Promise<string | void>;
 }
@@ -34,7 +32,7 @@ function verifyJwt(
 export function tokenVerifierFactory({
   jwksUri,
   userIdGenerator,
-}: Options): (token: string) => Promise<AuthToken> {
+}: TokenVerifierOptions): (token: string) => Promise<AuthToken> {
   const client = jwks({
     jwksUri,
     cache: true,
@@ -128,7 +126,7 @@ export function awsCognitoTokenVerifierFactory({
   region,
   userPoolId,
   userIdGenerator,
-}: CognitoOptions): (token: string) => Promise<AuthToken> {
+}: AwsCognitoAuthOptions): (token: string) => Promise<AuthToken> {
   if (!region) {
     throw new Error('Missing/undefined issuer argument');
   }
