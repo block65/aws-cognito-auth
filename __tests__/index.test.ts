@@ -1,7 +1,7 @@
 import { SigningKey } from 'jwks-rsa';
 import * as jsonwebtoken from 'jsonwebtoken';
 import * as crypto from 'crypto';
-import { awsCognitoTokenVerifierFactory } from '../lib/verifier';
+import { awsCognitoTokenVerifierFactory } from '../lib/index';
 
 const mockPrivateKeyRsa4096: Record<string, string> = {
   welp: `-----BEGIN RSA PRIVATE KEY-----
@@ -67,7 +67,7 @@ function createTestToken(kid: string): string {
 }
 
 describe('token verifier', () => {
-  test('cognito', async () => {
+  test('basic', async () => {
     const verifyCognitoToken = awsCognitoTokenVerifierFactory({
       region: 'local',
       userPoolId: 'issuer',
