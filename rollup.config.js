@@ -32,10 +32,6 @@ export default [
       format: 'cjs',
       sourcemap: true,
     },
-    external: [
-      /@babel\/runtime/,
-      ...Object.keys(manifest.dependencies),
-      'lodash',
-    ],
+    external: [/@babel\/runtime/, ...Object.keys(manifest.dependencies)],
   },
 ];
