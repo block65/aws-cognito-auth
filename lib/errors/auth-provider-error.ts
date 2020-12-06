@@ -5,6 +5,6 @@ export class AuthProviderError extends CustomError {
     super(message, err);
     this.setName('AuthProviderError');
     this.statusCode = 500;
-    this.internal = true;
+    this.sensitive = true;
   }
 }

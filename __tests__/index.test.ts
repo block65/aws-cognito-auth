@@ -1,124 +1,85 @@
-import type { NextFunction, Request, Response } from 'express';
-import express from 'express';
-import { expressAwsCognito } from '../lib';
-import { MissingAuthorizationError } from '../lib/errors/missing-authorization-error';
-import { TokenInvalidError } from '../lib/errors/token-invalid-error';
+import { SigningKey } from 'jwks-rsa';
+import * as jsonwebtoken from 'jsonwebtoken';
+import * as crypto from 'crypto';
+import { awsCognitoTokenVerifierFactory } from '../lib/verifier';
 
-function makeMockRequest(
-  options: { headers?: Record<string, string> } = {},
-): Request {
-  return ({
-    body: {},
-    cookies: {},
-    query: {},
-    params: {},
-    headers: options.headers || {},
-    method: 'get',
-    url: '/',
-    listeners: () => [],
-    get: jest.fn(),
-    resume: jest.fn().mockReturnThis(),
-    ...options,
-  } as unknown) as Request;
+const mockPrivateKeyRsa4096: Record<string, string> = {
+  welp: `-----BEGIN RSA PRIVATE KEY-----
+MIICWwIBAAKBgF47W5K5MPXWHk08DpsiNBjpcTr2gsiylv5eNixT7e95QzgeenTq
+CaQ0k+3RsVN+5kuTcfvTLqEoXrSbj9uBsZ2G1qtopjgrQo9cYPNncgmI/rZzR8nt
+osZmwjTUudOTgna55Jw533fXcmF0VeD9Ml21cPgXhGheO2u3oYQl2mjnAgMBAAEC
+gYAFtyXzvUXJ82W9G4JrSGTOigIzKFaAY8yiuwYgJCsPVlSMZ9TXmIZjLkk2qHxP
+6yd+t/+23XU7kx5DaBgOoUwrhdI3fmRyF0d23F3UWc5FAUy6yUTPZNvkQmA0MsW1
+e8b6hUxhd7ThoQVRtbPJ/JDcAWmdF/S4RHAf1wNK8b4hEQJBAK9gVg6BuGcdYxtp
+Qjw67zD5EEd4M4q4PQWmsAUYbeC0JDGWNHJxOWjuTEuDFVRCuPBguvQnSupoi8ge
+zxjezokCQQCJjU4JEE9abMeKBRsiaqMZHi5Rcq0kTGu8qHV8Gzr34U1MShsBb1Et
+2/HuDmNOEva8ljpVB7PzcbzkS8ZO7R/vAkAVCITJsJ0hINEmFHWxK5BMW1Ksf6oO
+1RHcf6VUtx1WecRtfgpEP3gXMZ1M4SfJt0be7Xr+lUfS3T8GfUtxPCehAkEAh7ag
+WLb75DbRhS7Wf9WAyCaMApZHmDnCTqhTCjj/rFRh5LR1AqxnBv0sLPmLJxv0z0rV
+kNGBzd7ZRNIyferdhwJAUh0aNh/cjXSvxAE/gXl5FPzcaX2pJrIdo4+s6NFr5fBB
+HS/UOnpzGCe0Nm+0yRK6Y6koi//UOheAk2S8b8AQNA==
+-----END RSA PRIVATE KEY-----`,
+};
+
+const mockPublicKeyRsa4096: Record<string, string> = {
+  welp: `-----BEGIN PUBLIC KEY-----
+MIGeMA0GCSqGSIb3DQEBAQUAA4GMADCBiAKBgF47W5K5MPXWHk08DpsiNBjpcTr2
+gsiylv5eNixT7e95QzgeenTqCaQ0k+3RsVN+5kuTcfvTLqEoXrSbj9uBsZ2G1qto
+pjgrQo9cYPNncgmI/rZzR8ntosZmwjTUudOTgna55Jw533fXcmF0VeD9Ml21cPgX
+hGheO2u3oYQl2mjnAgMBAAE=
+-----END PUBLIC KEY-----`,
+};
+
+jest.mock('jwks-rsa', () => {
+  return function jwksRsa() {
+    return {
+      async getSigningKeyAsync(kid: string): Promise<SigningKey> {
+        return {
+          kid,
+          rsaPublicKey: mockPublicKeyRsa4096[kid],
+          nbf: '0',
+          publicKey: mockPublicKeyRsa4096[kid],
+          getPublicKey: () => {
+            return mockPublicKeyRsa4096[kid];
+          },
+        };
+      },
+    };
+  };
+});
+
+function createTestToken(kid: string): string {
+  return jsonwebtoken.sign(
+    {
+      client_id: crypto.randomBytes(12).toString('hex'),
+      scope: 'test',
+      token_use: 'access',
+    },
+    mockPrivateKeyRsa4096[kid],
+    {
+      keyid: kid,
+      algorithm: 'RS256',
+      subject: 'test',
+      expiresIn: '1h',
+      jwtid: crypto.randomBytes(12).toString('hex'),
+    },
+  );
 }
 
-function makeMockResponse(): Response {
-  return ({
-    setHeader: jest.fn().mockReturnThis(),
-    status: jest.fn().mockReturnThis(),
-    send: jest.fn().mockReturnThis(),
-    end: jest.fn().mockReturnThis(),
-  } as unknown) as Response;
-}
-
-function testApp(
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): Promise<unknown> {
-  const app = express();
-  app.use(expressAwsCognito({ region: 'local', userPoolId: 'issuer' }));
-
-  return new Promise((resolve) => {
-    app(req, res, (err: unknown) => {
-      next(err);
-      resolve();
+describe('token verifier', () => {
+  test('cognito', async () => {
+    const verifyCognitoToken = awsCognitoTokenVerifierFactory({
+      region: 'local',
+      userPoolId: 'issuer',
+      async userIdGenerator() {
+        return 'fakeUserId';
+      },
     });
+
+    const token = createTestToken('welp');
+
+    const auth = await verifyCognitoToken(token);
+
+    expect(auth).toHaveProperty('userId', 'fakeUserId');
   });
-}
-
-test('should throw MissingAuthorizationError with invalid headers ', async () => {
-  await testApp(makeMockRequest(), makeMockResponse(), (err: any) => {
-    expect(err).toBeInstanceOf(MissingAuthorizationError);
-  });
-  expect.assertions(1);
-});
-
-test('should throw MissingAuthorizationError with no headers ', async () => {
-  await testApp(
-    makeMockRequest({
-      headers: {
-        authorization: 'OMG DED',
-      },
-    }),
-    makeMockResponse(),
-    (err: any) => {
-      expect(err).toBeInstanceOf(MissingAuthorizationError);
-      expect(err.message).toContain('Invalid');
-    },
-  );
-  expect.assertions(2);
-});
-
-test('should throw MissingAuthorizationError with missing JWT ', async () => {
-  await testApp(
-    makeMockRequest({
-      headers: {
-        authorization: 'Bearer',
-      },
-    }),
-    makeMockResponse(),
-    (err: any) => {
-      expect(err).toBeInstanceOf(MissingAuthorizationError);
-      expect(err.message).toContain('Invalid');
-    },
-  );
-  expect.assertions(2);
-});
-
-test('should throw TokenError with bad JWT ', async () => {
-  await testApp(
-    makeMockRequest({
-      headers: {
-        authorization: 'Bearer DED',
-      },
-    }),
-    makeMockResponse(),
-    (err: any) => {
-      expect(err).toBeInstanceOf(TokenInvalidError);
-      expect(err.message).toContain('Invalid');
-    },
-  );
-  expect.assertions(2);
-});
-
-test('should throw TokenError with fake JWT ', async () => {
-  await testApp(
-    makeMockRequest({
-      headers: {
-        authorization:
-          'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c',
-      },
-    }),
-    makeMockResponse(),
-    (err: any) => {
-      expect(err).toBeInstanceOf(TokenInvalidError);
-      expect(err.debug()).toMatchObject({
-        code: 'invalid_token',
-        inner: expect.any(Error),
-      });
-      // expect(err.message).toContain('Invalid');
-    },
-  );
-  expect.assertions(2);
 });
