@@ -31,6 +31,7 @@ export default [
       file: manifest.main,
       format: 'cjs',
       sourcemap: true,
+      exports: 'named',
     },
     external: [/@babel\/runtime/, ...Object.keys(manifest.dependencies)],
   },
