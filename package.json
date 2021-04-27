@@ -2,7 +2,7 @@
   "name": "@block65/aws-cognito-auth",
   "version": "5.0.0",
   "license": "UNLICENSED",
-  "main": "dist/build.js",
+  "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
