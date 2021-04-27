@@ -1,5 +1,5 @@
 import type { JsonObject } from 'type-fest';
-import jwks from 'jwks-rsa';
+import * as jwks from 'jwks-rsa';
 import { AuthToken, createAuthToken } from '@block65/auth-token';
 import * as jsonwebtoken from 'jsonwebtoken';
 import { TokenUnsuitableError } from './errors/token-unsuitable-error';
@@ -66,14 +66,12 @@ export function tokenVerifierFactory({
       });
     }
 
-    const key = await client
-      .getSigningKeyAsync(decoded.header.kid)
-      .catch((err) => {
-        if (err instanceof jwks.SigningKeyNotFoundError) {
-          throw new TokenInvalidError(err.message, err);
-        }
-        throw err;
-      });
+    const key = await client.getSigningKey(decoded.header.kid).catch((err) => {
+      if (err instanceof jwks.SigningKeyNotFoundError) {
+        throw new TokenInvalidError(err.message, err);
+      }
+      throw err;
+    });
 
     const verified = await verifyJwt(jwt, key.getPublicKey(), {
       ...options,

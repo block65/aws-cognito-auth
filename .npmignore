@@ -1,4 +1,0 @@
-*
-!dist/build.js
-!dist/*.d.ts
-!dist/errors/*.d.ts
