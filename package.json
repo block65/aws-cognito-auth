@@ -1,6 +1,6 @@
 {
   "name": "@block65/aws-cognito-auth",
-  "version": "5.0.1",
+  "version": "6.0.0",
   "license": "UNLICENSED",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
