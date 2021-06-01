@@ -1,7 +1,8 @@
-import { SigningKey } from 'jwks-rsa';
-import * as jsonwebtoken from 'jsonwebtoken';
+import type { SigningKey } from 'jwks-rsa';
 import * as crypto from 'crypto';
-import { awsCognitoTokenVerifierFactory } from '../lib';
+import * as jsonwebtoken from 'jsonwebtoken';
+import { jest, describe, test } from '@jest/globals';
+import { awsCognitoTokenVerifierFactory } from '../lib/index.js';
 
 const mockPrivateKeyRsa4096: Record<string, string> = {
   welp: `-----BEGIN RSA PRIVATE KEY-----
@@ -30,23 +31,23 @@ hGheO2u3oYQl2mjnAgMBAAE=
 -----END PUBLIC KEY-----`,
 };
 
-jest.mock('jwks-rsa', () => {
-  return function jwksRsa() {
-    return {
-      async getSigningKey(kid: string): Promise<SigningKey> {
-        return {
-          kid,
-          alg: 'RS256',
-          rsaPublicKey: mockPublicKeyRsa4096[kid],
-          publicKey: mockPublicKeyRsa4096[kid],
-          getPublicKey: () => {
-            return mockPublicKeyRsa4096[kid];
-          },
-        };
-      },
-    };
-  };
-});
+jest.mock(
+  'jwks-rsa',
+  () =>
+    function jwksRsa() {
+      return {
+        async getSigningKey(kid: string): Promise<SigningKey> {
+          return {
+            kid,
+            alg: 'RS256',
+            rsaPublicKey: mockPublicKeyRsa4096[kid],
+            publicKey: mockPublicKeyRsa4096[kid],
+            getPublicKey: () => mockPublicKeyRsa4096[kid],
+          };
+        },
+      };
+    },
+);
 
 function createTestToken(kid: string): string {
   return jsonwebtoken.sign(
