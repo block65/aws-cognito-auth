@@ -2,9 +2,9 @@ import type { JsonObject } from 'type-fest';
 import * as jwks from 'jwks-rsa';
 import { AuthToken, createAuthToken } from '@block65/auth-token';
 import * as jsonwebtoken from 'jsonwebtoken';
-import { TokenUnsuitableError } from './errors/token-unsuitable-error';
-import { TokenExpiredError } from './errors/token-expired-error';
-import { TokenInvalidError } from './errors/token-invalid-error';
+import { TokenUnsuitableError } from './errors/token-unsuitable-error.js';
+import { TokenExpiredError } from './errors/token-expired-error.js';
+import { TokenInvalidError } from './errors/token-invalid-error.js';
 
 export { TokenInvalidError, TokenUnsuitableError, TokenExpiredError };
 
