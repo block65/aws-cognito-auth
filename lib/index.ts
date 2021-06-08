@@ -1,10 +1,10 @@
 import type { JsonObject } from 'type-fest';
-import * as jwks from 'jwks-rsa';
+import { JwksClient, SigningKeyNotFoundError } from 'jwks-rsa';
 import { AuthToken, createAuthToken } from '@block65/auth-token';
-import * as jsonwebtoken from 'jsonwebtoken';
-import { TokenUnsuitableError } from './errors/token-unsuitable-error.js';
+import jsonwebtoken from 'jsonwebtoken';
 import { TokenExpiredError } from './errors/token-expired-error.js';
 import { TokenInvalidError } from './errors/token-invalid-error.js';
+import { TokenUnsuitableError } from './errors/token-unsuitable-error.js';
 
 export { TokenInvalidError, TokenUnsuitableError, TokenExpiredError };
 
@@ -35,7 +35,7 @@ export function tokenVerifierFactory({
   jwksUri,
   userIdGenerator,
 }: TokenVerifierOptions): (token: string) => Promise<AuthToken> {
-  const client = jwks({
+  const client = new JwksClient({
     jwksUri,
     cache: true,
     rateLimit: true,
@@ -67,7 +67,7 @@ export function tokenVerifierFactory({
     }
 
     const key = await client.getSigningKey(decoded.header.kid).catch((err) => {
-      if (err instanceof jwks.SigningKeyNotFoundError) {
+      if (err instanceof SigningKeyNotFoundError) {
         throw new TokenInvalidError(err.message, err);
       }
       throw err;
