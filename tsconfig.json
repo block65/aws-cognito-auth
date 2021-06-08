@@ -10,7 +10,8 @@
     "isolatedModules": true,
     "lib": [
       "es2020"
-    ]
+    ],
+    "esModuleInterop": true
   },
   "include": [
     "lib"
