@@ -1,11 +1,15 @@
-import type { SigningKey } from 'jwks-rsa';
-import * as crypto from 'crypto';
-import * as jsonwebtoken from 'jsonwebtoken';
-import { jest, describe, test } from '@jest/globals';
-import { awsCognitoTokenVerifierFactory } from '../lib/index.js';
+import { describe, test } from '@jest/globals';
+import { randomBytes } from 'crypto';
+import getPort from 'get-port';
+import { createServer, Server } from 'http';
+import jsonwebtoken from 'jsonwebtoken';
+import {
+  awsCognitoTokenVerifierFactory,
+  tokenVerifierFactory,
+} from '../lib/index.js';
 
 const mockPrivateKeyRsa4096: Record<string, string> = {
-  welp: `-----BEGIN RSA PRIVATE KEY-----
+  test1: `-----BEGIN RSA PRIVATE KEY-----
 MIICWwIBAAKBgF47W5K5MPXWHk08DpsiNBjpcTr2gsiylv5eNixT7e95QzgeenTq
 CaQ0k+3RsVN+5kuTcfvTLqEoXrSbj9uBsZ2G1qtopjgrQo9cYPNncgmI/rZzR8nt
 osZmwjTUudOTgna55Jw533fXcmF0VeD9Ml21cPgXhGheO2u3oYQl2mjnAgMBAAEC
@@ -22,37 +26,48 @@ HS/UOnpzGCe0Nm+0yRK6Y6koi//UOheAk2S8b8AQNA==
 -----END RSA PRIVATE KEY-----`,
 };
 
-const mockPublicKeyRsa4096: Record<string, string> = {
-  welp: `-----BEGIN PUBLIC KEY-----
+const mockPublicKeyRsa4096: Record<keyof typeof mockPrivateKeyRsa4096, string> =
+  {
+    test1: `-----BEGIN PUBLIC KEY-----
 MIGeMA0GCSqGSIb3DQEBAQUAA4GMADCBiAKBgF47W5K5MPXWHk08DpsiNBjpcTr2
 gsiylv5eNixT7e95QzgeenTqCaQ0k+3RsVN+5kuTcfvTLqEoXrSbj9uBsZ2G1qto
 pjgrQo9cYPNncgmI/rZzR8ntosZmwjTUudOTgna55Jw533fXcmF0VeD9Ml21cPgX
 hGheO2u3oYQl2mjnAgMBAAE=
 -----END PUBLIC KEY-----`,
+  };
+
+const mockPublicKeyRsa4096Modulus: Record<
+  keyof typeof mockPublicKeyRsa4096,
+  Buffer
+> = {
+  test1: Buffer.from(
+    '5e3b5b92b930f5d61e4d3c0e9b223418e9713af682c8b296fe5e362c53edef7943381e7a74ea09a43493edd1b1537ee64b9371fbd32ea1285eb49b8fdb81b19d86d6ab68a6382b428f5c60f367720988feb67347c9eda2c666c234d4b9d3938276b9e49c39df77d772617455e0fd325db570f81784685e3b6bb7a18425da68e7',
+    'hex',
+  ),
 };
 
-jest.mock(
-  'jwks-rsa',
-  () =>
-    function jwksRsa() {
-      return {
-        async getSigningKey(kid: string): Promise<SigningKey> {
-          return {
-            kid,
-            alg: 'RS256',
-            rsaPublicKey: mockPublicKeyRsa4096[kid],
-            publicKey: mockPublicKeyRsa4096[kid],
-            getPublicKey: () => mockPublicKeyRsa4096[kid],
-          };
-        },
-      };
-    },
-);
+// jest.mock(
+//   'jwks-rsa',
+//   () =>
+//     function jwksRsa() {
+//       return {
+//         async getSigningKey(kid: string): Promise<SigningKey> {
+//           return {
+//             kid,
+//             alg: 'RS256',
+//             rsaPublicKey: mockPublicKeyRsa4096[kid],
+//             publicKey: mockPublicKeyRsa4096[kid],
+//             getPublicKey: () => mockPublicKeyRsa4096[kid],
+//           };
+//         },
+//       };
+//     },
+// );
 
 function createTestToken(kid: string): string {
   return jsonwebtoken.sign(
     {
-      client_id: crypto.randomBytes(12).toString('hex'),
+      client_id: randomBytes(12).toString('hex'),
       scope: 'test',
       token_use: 'access',
     },
@@ -62,13 +77,56 @@ function createTestToken(kid: string): string {
       algorithm: 'RS256',
       subject: 'test',
       expiresIn: '1h',
-      jwtid: crypto.randomBytes(12).toString('hex'),
+      jwtid: randomBytes(12).toString('hex'),
     },
   );
 }
 
 describe('token verifier', () => {
-  test('basic', async () => {
+  let server: Server;
+  let port: number;
+  beforeAll(async () => {
+    port = await getPort();
+    server = createServer(async (request, response) => {
+      response.writeHead(200, { 'Content-Type': 'text/plain' });
+      response.end(
+        JSON.stringify({
+          keys: [
+            {
+              alg: 'RS256',
+              use: 'sig',
+              kid: 'test1',
+              kty: 'RSA',
+              e: 'AQAB',
+              n: mockPublicKeyRsa4096Modulus.test1.toString('base64'),
+            },
+          ],
+        }),
+        'utf-8',
+      );
+    }).listen(port);
+  });
+
+  afterAll(() => {
+    server.close();
+  });
+
+  test('Vanilla TVF', async () => {
+    const verifyCognitoToken = tokenVerifierFactory({
+      jwksUri: `http://0.0.0.0:${port}/.well-known/jwks.json`,
+      async userIdGenerator() {
+        return 'fakeUserId';
+      },
+    });
+
+    const token = createTestToken('test1');
+
+    const auth = await verifyCognitoToken(token);
+
+    expect(auth).toHaveProperty('userId', 'fakeUserId');
+  });
+
+  test.skip('Cognito TVF', async () => {
     const verifyCognitoToken = awsCognitoTokenVerifierFactory({
       region: 'local',
       userPoolId: 'issuer',
@@ -77,7 +135,7 @@ describe('token verifier', () => {
       },
     });
 
-    const token = createTestToken('welp');
+    const token = createTestToken('test1');
 
     const auth = await verifyCognitoToken(token);
 
