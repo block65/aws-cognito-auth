@@ -40,6 +40,7 @@
     "eslint-plugin-prettier": "^3.4.0",
     "eslint-plugin-react": "^7.24.0",
     "eslint-plugin-react-hooks": "^4.2.0",
+    "get-port": "^5.1.1",
     "jest": "^27.0.4",
     "prettier": "^2.3.1",
     "rimraf": "^3.0.2",
