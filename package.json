@@ -16,7 +16,8 @@
     "build": "tsc",
     "build:clean": "rimraf dist/*",
     "prepare": "yarn test && yarn build:clean && yarn build",
-    "test": "NODE_OPTIONS=--experimental-vm-modules jest"
+    "test:ava": "ava",
+    "test": "yarn test:ava"
   },
   "dependencies": {
     "@block65/auth-token": "^3.0.2",
