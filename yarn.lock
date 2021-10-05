@@ -189,10 +189,10 @@
   resolved "https://registry.yarnpkg.com/@block65/auth-token/-/auth-token-3.0.2.tgz#c4afeb1080883487555f774d4fa45c76e234c9a4"
   integrity sha512-+0BY3OeiwZeWUS6+KiE3I1j2xWAuYMn7iNVWdsAnrcPNLMHVrett31oQXrky8e0/3mGu42XaE8vud2B7r0NggQ==
 
-"@block65/custom-error@^7.0.0":
-  version "7.0.0"
-  resolved "https://registry.yarnpkg.com/@block65/custom-error/-/custom-error-7.0.0.tgz#2ad2caaf6dd2d82759d694b71efcab5362b4ea1a"
-  integrity sha512-YTLObPP3/7OhcC3D4aJDXz2/4INyzT9l58NFxTqaw6nXcDvXgeYfTxNCy5p23qFLeejs7ktXCB6hm4ikrbSeTA==
+"@block65/custom-error@^7.0.1":
+  version "7.0.1"
+  resolved "https://registry.yarnpkg.com/@block65/custom-error/-/custom-error-7.0.1.tgz#5b7e9b8b3abd08bdf82659f0796ed35e376a77a1"
+  integrity sha512-vbdZhMmnkRaWVSc0qiD1ShytTYD9EX24ktRBeTLHfPF2eEeNDbkgqzgtGi/bz2IVdbfifIN1pqBeKbe1nIrWPA==
 
 "@block65/eslint-config@5.2.0":
   version "5.2.0"
