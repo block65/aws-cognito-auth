@@ -62,7 +62,7 @@ export function tokenVerifierFactory({
 
     if (!decoded.header?.kid) {
       throw new TokenUnsuitableError('Missing key id').debug({
-        header: decoded.header,
+        decoded,
       });
     }
 
@@ -78,11 +78,25 @@ export function tokenVerifierFactory({
       algorithms: ['RS256'],
     }).catch((err) => {
       if (err instanceof jsonwebtoken.TokenExpiredError) {
-        throw new TokenExpiredError(err.message, err);
+        throw new TokenExpiredError(err.message, err).addDetail({
+          violations: [
+            {
+              field: 'exp',
+              description: 'Authorisation has expired',
+            },
+          ],
+        });
       }
 
       if (err instanceof jsonwebtoken.NotBeforeError) {
-        throw new TokenUnsuitableError(err.message, err);
+        throw new TokenUnsuitableError(err.message, err).addDetail({
+          violations: [
+            {
+              field: 'exp',
+              description: 'Authorisation is not valid yet',
+            },
+          ],
+        });
       }
 
       if (err instanceof jsonwebtoken.JsonWebTokenError) {
@@ -92,17 +106,42 @@ export function tokenVerifierFactory({
     });
 
     if (!verified) {
-      throw new TokenInvalidError('not verified');
+      throw new TokenInvalidError('not verified').addDetail({
+        violations: [
+          {
+            field: 'jwt',
+            description: 'Verification failed',
+          },
+        ],
+      });
     }
 
     if (!decoded?.payload?.sub) {
-      throw new TokenUnsuitableError('Missing subject');
+      throw new TokenUnsuitableError('Missing subject')
+        .addDetail({
+          violations: [
+            {
+              field: 'sub',
+              description: 'Missing subject',
+            },
+          ],
+        })
+        .debug({ decoded });
     }
 
     if (decoded.payload.token_use !== 'access') {
-      throw new TokenUnsuitableError(`Unsuitable Token Use`).debug({
-        payload: decoded.payload,
-      });
+      throw new TokenUnsuitableError(`Unsuitable Token Use`)
+        .addDetail({
+          violations: [
+            {
+              field: 'token_use',
+              description: 'Not an access token',
+            },
+          ],
+        })
+        .debug({
+          payload: decoded.payload,
+        });
     }
 
     const userId = userIdGenerator
@@ -127,8 +166,8 @@ export function awsCognitoTokenVerifierFactory({
   userPoolId,
   userIdGenerator,
 }: AwsCognitoAuthOptions): (token: string) => Promise<AuthToken> {
-  if (!region) {
-    throw new Error('Missing/undefined issuer argument');
+  if (!region || typeof region !== 'string') {
+    throw new TypeError('Invalid region argument');
   }
 
   const issuer = `https://cognito-idp.${region}.amazonaws.com/${userPoolId}`;
