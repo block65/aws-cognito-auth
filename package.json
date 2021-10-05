@@ -21,7 +21,7 @@
   },
   "dependencies": {
     "@block65/auth-token": "^3.0.2",
-    "@block65/custom-error": "^6.0.2",
+    "@block65/custom-error": "^7.0.0",
     "jsonwebtoken": "^8.5.1",
     "jwks-rsa": "^2.0.4"
   },
