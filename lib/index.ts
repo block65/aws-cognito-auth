@@ -1,7 +1,7 @@
-import type { JsonObject } from 'type-fest';
-import { JwksClient, SigningKeyNotFoundError } from 'jwks-rsa';
 import { AuthToken, createAuthToken } from '@block65/auth-token';
 import jsonwebtoken from 'jsonwebtoken';
+import { JwksClient, SigningKeyNotFoundError } from 'jwks-rsa';
+import type { JsonObject } from 'type-fest';
 import { TokenExpiredError } from './errors/token-expired-error.js';
 import { TokenInvalidError } from './errors/token-invalid-error.js';
 import { TokenUnsuitableError } from './errors/token-unsuitable-error.js';
@@ -19,14 +19,18 @@ interface TokenVerifierOptions {
   userIdGenerator?: (claims: JsonObject) => Promise<string | void>;
 }
 
-function verifyJwt(
+function jsonWebTokenVerifyAsync(
   jwt: string,
   key: jsonwebtoken.Secret | jsonwebtoken.GetPublicKeyOrSecret,
   options?: jsonwebtoken.VerifyOptions,
-): Promise<boolean> {
-  return new Promise((resolve, reject) => {
+): Promise<jsonwebtoken.JwtPayload | undefined> {
+  return new Promise<jsonwebtoken.JwtPayload>((resolve, reject) => {
     jsonwebtoken.verify(jwt, key, options, (err, result) => {
-      return err ? reject(err) : resolve(!!result);
+      if (!result || typeof result === 'string') {
+        throw new Error('Bad token verify result');
+      }
+
+      return err ? reject(err) : resolve(result);
     });
   });
 }
@@ -45,14 +49,7 @@ export function tokenVerifierFactory({
   const options = {};
 
   return async (jwt: string): Promise<AuthToken> => {
-    const decoded:
-      | {
-          header?: { kid?: string };
-          payload?: JsonObject;
-          signature?: string;
-        }
-      | null
-      | string = jsonwebtoken.decode(jwt, {
+    const decoded = jsonwebtoken.decode(jwt, {
       complete: true,
     });
 
@@ -66,6 +63,12 @@ export function tokenVerifierFactory({
       });
     }
 
+    if (typeof decoded.payload === 'string') {
+      throw new TokenUnsuitableError('Bad string payload').debug({
+        decoded,
+      });
+    }
+
     const key = await client.getSigningKey(decoded.header.kid).catch((err) => {
       if (err instanceof SigningKeyNotFoundError) {
         throw new TokenInvalidError(err.message, err);
@@ -73,7 +76,7 @@ export function tokenVerifierFactory({
       throw err;
     });
 
-    const verified = await verifyJwt(jwt, key.getPublicKey(), {
+    const verified = await jsonWebTokenVerifyAsync(jwt, key.getPublicKey(), {
       ...options,
       algorithms: ['RS256'],
     }).catch((err) => {
@@ -116,7 +119,7 @@ export function tokenVerifierFactory({
       });
     }
 
-    if (!decoded?.payload?.sub) {
+    if (!decoded.payload?.sub) {
       throw new TokenUnsuitableError('Missing subject')
         .addDetail({
           violations: [
@@ -129,7 +132,7 @@ export function tokenVerifierFactory({
         .debug({ decoded });
     }
 
-    if (decoded.payload.token_use !== 'access') {
+    if (decoded.payload.token_use && decoded.payload.token_use !== 'access') {
       throw new TokenUnsuitableError(`Unsuitable Token Use`)
         .addDetail({
           violations: [
