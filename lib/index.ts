@@ -8,29 +8,103 @@ import { TokenUnsuitableError } from './errors/token-unsuitable-error.js';
 
 export { TokenInvalidError, TokenUnsuitableError, TokenExpiredError };
 
-export interface AwsCognitoAuthOptions {
-  region: string;
-  userPoolId: string;
-  userIdGenerator?: (claims: JsonObject) => Promise<string | void>;
-}
-
 interface TokenVerifierOptions {
   jwksUri: string;
-  userIdGenerator?: (claims: JsonObject) => Promise<string | void>;
+  userIdGenerator?: (
+    claims: JsonObject,
+  ) => (string | void) | Promise<string | void>;
 }
 
-function jsonWebTokenVerifyAsync(
+export interface AwsCognitoAuthOptions
+  extends Pick<TokenVerifierOptions, 'userIdGenerator'> {
+  region: string;
+  userPoolId: string;
+}
+
+export function jsonWebTokenVerify(
   jwt: string,
   key: jsonwebtoken.Secret | jsonwebtoken.GetPublicKeyOrSecret,
   options?: jsonwebtoken.VerifyOptions,
 ): Promise<jsonwebtoken.JwtPayload | undefined> {
   return new Promise<jsonwebtoken.JwtPayload>((resolve, reject) => {
     jsonwebtoken.verify(jwt, key, options, (err, result) => {
-      if (!result || typeof result === 'string') {
-        throw new Error('Bad token verify result');
+      if (err) {
+        if (err instanceof jsonwebtoken.TokenExpiredError) {
+          return reject(
+            new TokenExpiredError(err.message, err).addDetail({
+              violations: [
+                {
+                  field: 'exp',
+                  description: 'Authorisation has expired',
+                },
+              ],
+            }),
+          );
+        }
+
+        if (err instanceof jsonwebtoken.NotBeforeError) {
+          return reject(
+            new TokenUnsuitableError(err.message, err).addDetail({
+              violations: [
+                {
+                  field: 'exp',
+                  description: 'Authorisation is not valid yet',
+                },
+              ],
+            }),
+          );
+        }
+
+        if (err instanceof jsonwebtoken.JsonWebTokenError) {
+          switch (err.message) {
+            case 'invalid token':
+            case 'jwt malformed':
+            case 'invalid signature':
+            case 'jwt signature is required':
+              return reject(new TokenInvalidError(err.message, err));
+            default:
+              if (err.message.startsWith('jwt audience invalid')) {
+                return reject(new TokenUnsuitableError(err.message, err));
+              }
+              if (err.message.startsWith('jwt issuer invalid')) {
+                return reject(new TokenUnsuitableError(err.message, err));
+              }
+              if (err.message.startsWith('jwt jwtid invalid')) {
+                return reject(new TokenUnsuitableError(err.message, err));
+              }
+          }
+        }
+        return reject(err);
       }
 
-      return err ? reject(err) : resolve(result);
+      if (!result) {
+        return reject(
+          new TokenUnsuitableError('Token verify failed')
+            .debug({
+              result,
+              jwt, // safe to put in the logs if it failed anyway?
+            })
+            .addDetail({
+              violations: [
+                {
+                  field: 'jwt',
+                  description: 'Verification failed',
+                },
+              ],
+            }),
+        );
+      }
+
+      if (typeof result === 'string') {
+        return reject(
+          new TokenUnsuitableError('Unexpected token verify result').debug({
+            result,
+            jwt, // safe to put in the logs if it failed anyway?
+          }),
+        );
+      }
+
+      return resolve(result);
     });
   });
 }
@@ -76,48 +150,10 @@ export function tokenVerifierFactory({
       throw err;
     });
 
-    const verified = await jsonWebTokenVerifyAsync(jwt, key.getPublicKey(), {
+    await jsonWebTokenVerify(jwt, key.getPublicKey(), {
       ...options,
       algorithms: ['RS256'],
-    }).catch((err) => {
-      if (err instanceof jsonwebtoken.TokenExpiredError) {
-        throw new TokenExpiredError(err.message, err).addDetail({
-          violations: [
-            {
-              field: 'exp',
-              description: 'Authorisation has expired',
-            },
-          ],
-        });
-      }
-
-      if (err instanceof jsonwebtoken.NotBeforeError) {
-        throw new TokenUnsuitableError(err.message, err).addDetail({
-          violations: [
-            {
-              field: 'exp',
-              description: 'Authorisation is not valid yet',
-            },
-          ],
-        });
-      }
-
-      if (err instanceof jsonwebtoken.JsonWebTokenError) {
-        throw new TokenInvalidError(err.message, err);
-      }
-      throw err;
     });
-
-    if (!verified) {
-      throw new TokenInvalidError('not verified').addDetail({
-        violations: [
-          {
-            field: 'jwt',
-            description: 'Verification failed',
-          },
-        ],
-      });
-    }
 
     if (!decoded.payload?.sub) {
       throw new TokenUnsuitableError('Missing subject')
